@@ -1,0 +1,13 @@
+# docker-compose.yml
+services:
+  fashionconstruct:
+    build:
+      context: .
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:8000}  #ЛОКАЛЬНО 
+    ports:
+      - "3000:80"
+    environment:
+      VITE_API_URL: ${VITE_API_URL:-http://localhost:8000}
+    restart: unless-stopped
+    container_name: fashionconstruct-admin
