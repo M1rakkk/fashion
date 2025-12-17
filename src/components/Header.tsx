@@ -5,9 +5,7 @@ import { Bell } from "lucide-react";
 
 const Header = () => {
   return (
-    <header className="h-16 border-b border-[var(--border)] bg-[var(--card)] flex items-center justify-between px-6">
-      <h2 className="text-xl font-semibold">Панель управления</h2>
-
+    <header className="h-16 border-b border-[var(--border)] bg-[var(--background)] flex items-center justify-end px-6">
       <div className="flex items-center gap-4">
         {/* Аватарка слева от колокольчика */}
         <img

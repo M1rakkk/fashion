@@ -48,6 +48,12 @@ interface News {
   title: string;
 }
 
+interface Category {
+  id: string;
+  name: string;
+  children: Category[];
+}
+
 export default function CreateShopPage() {
   const navigate = useNavigate();
 
@@ -57,15 +63,22 @@ export default function CreateShopPage() {
   // Шаг 1 — Инфо
   const [shopName, setShopName] = useState("");
   const [shopDomain, setShopDomain] = useState("");
+  const [coverImage, setCoverImage] = useState("");
 
   // Категории
-  const [categories, setCategories] = useState<string[]>([
-    "Верхняя одежда",
-    "Куртки",
-    "Пальто",
-    "Джинсы и брюки",
+  const [categories, setCategories] = useState<Category[]>([
+    {
+      id: "1",
+      name: "Верхняя одежда",
+      children: [
+        { id: "2", name: "Куртки", children: [] },
+        { id: "3", name: "Пальто", children: [] },
+      ],
+    },
+    { id: "4", name: "Джинсы и брюки", children: [] },
   ]);
   const [newCategory, setNewCategory] = useState("");
+  const [addingToParentId, setAddingToParentId] = useState<string | null>(null);
 
   // Бренды
   const [brands, setBrands] = useState<string[]>(["Nike", "Adidas"]);
@@ -74,14 +87,10 @@ export default function CreateShopPage() {
   const [editBrandValue, setEditBrandValue] = useState("");
 
   // Товары
-  const [products, setProducts] = useState<Product[]>([
-    { id: "1", image: "", name: "Винтажная куртка", price: "12 500 ₽" },
-  ]);
+  const [products, setProducts] = useState<Product[]>([]);
 
   // Новости
-  const [news, setNews] = useState<News[]>([
-    { id: "1", image: "", title: "Новая весенняя коллекция уже в продаже!" },
-  ]);
+  const [news, setNews] = useState<News[]>([]);
 
   // Модалки
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
@@ -107,19 +116,105 @@ export default function CreateShopPage() {
     }
   };
 
-  const addCategory = () => {
-    if (newCategory.trim()) {
-      setCategories([...categories, newCategory.trim()]);
-      setNewCategory("");
+  const handleCoverImage = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => setCoverImage(reader.result as string);
+      reader.readAsDataURL(file);
     }
   };
-  const removeCategory = (i: number) => setCategories(categories.filter((_, idx) => idx !== i));
-  const moveCategory = (i: number, dir: "up" | "down") => {
-    const arr = [...categories];
-    if (dir === "up" && i > 0) [arr[i], arr[i - 1]] = [arr[i - 1], arr[i]];
-    if (dir === "down" && i < arr.length - 1) [arr[i], arr[i + 1]] = [arr[i + 1], arr[i]];
-    setCategories(arr);
+
+  const addCategory = (parentId: string | null = null) => {
+    if (newCategory.trim()) {
+      const newCat: Category = { id: Date.now().toString(), name: newCategory.trim(), children: [] };
+      if (!parentId) {
+        setCategories([...categories, newCat]);
+      } else {
+        const updateTree = (cats: Category[]): Category[] => {
+          return cats.map(cat => {
+            if (cat.id === parentId) {
+              return { ...cat, children: [...cat.children, newCat] };
+            }
+            return { ...cat, children: updateTree(cat.children) };
+          });
+        };
+        setCategories(updateTree(categories));
+      }
+      setNewCategory("");
+      setAddingToParentId(null);
+    }
   };
+
+  const removeCategory = (id: string, cats: Category[] = categories): Category[] => {
+    return cats.filter(cat => {
+      if (cat.id === id) return false;
+      cat.children = removeCategory(id, cat.children);
+      return true;
+    });
+  };
+
+  const handleRemoveCategory = (id: string) => {
+    setCategories(removeCategory(id));
+  };
+
+  const moveCategory = (id: string, dir: "up" | "down", parentCats: Category[] = categories) => {
+    const index = parentCats.findIndex(cat => cat.id === id);
+    if (index === -1) {
+      // Search in children
+      parentCats.forEach(cat => {
+        moveCategory(id, dir, cat.children);
+      });
+      return;
+    }
+    const arr = [...parentCats];
+    if (dir === "up" && index > 0) [arr[index], arr[index - 1]] = [arr[index - 1], arr[index]];
+    if (dir === "down" && index < arr.length - 1) [arr[index], arr[index + 1]] = [arr[index + 1], arr[index]];
+    if (parentCats === categories) {
+      setCategories(arr);
+    } else {
+      // Update the tree
+      setCategories([...categories]); // Trigger re-render
+    }
+  };
+
+  const startAddChild = (id: string) => {
+    setAddingToParentId(id);
+  };
+
+  const CategoryTree: React.FC<{ cats: Category[] }> = ({ cats }) => (
+    <>
+      {cats.map((cat, i) => (
+        <div key={cat.id}>
+          <div className="tree-item">
+            <div className="flex items-center gap-5 flex-1">
+              <GripVertical className="w-5 h-5 text-gray-500 cursor-grab opacity-0 group-hover:opacity-100 transition" />
+              <span className="text-lg font-medium">{cat.name}</span>
+            </div>
+            <div className="tree-actions">
+              <button onClick={() => moveCategory(cat.id, "up")} className="action-btn">
+                <ChevronUp className="w-5 h-5 text-gray-400" />
+              </button>
+              <button onClick={() => moveCategory(cat.id, "down")} className="action-btn">
+                <ChevronDown className="w-5 h-5 text-gray-400" />
+              </button>
+              <button onClick={() => startAddChild(cat.id)} className="action-btn">
+                <Plus className="w-5 h-5 text-gray-400" />
+              </button>
+              <button onClick={() => handleRemoveCategory(cat.id)} className="action-btn">
+                <Trash2 className="w-5 h-5 text-red-400" />
+              </button>
+            </div>
+          </div>
+          {cat.children.length > 0 && (
+            <div className="tree-sub-list">
+              <CategoryTree cats={cat.children} />
+            </div>
+          )}
+        </div>
+      ))}
+    </>
+  );
 
   const addBrand = () => {
     if (newBrand.trim()) {
@@ -178,10 +273,10 @@ export default function CreateShopPage() {
   return (
     <div className="min-h-screen flex bg-[#0a0a0f] text-white">
       {/* Левое меню */}
-      <aside className="w-80 bg-[#0f0f17] p-8 flex flex-col">
-        <h1 className="text-3xl font-bold mb-12">FashionConstruct</h1>
+      <aside className="w-64 bg-[#0f0f17] p-6 flex flex-col">
+        <h1 className="text-2xl font-bold mb-8">FashionConstruct</h1>
 
-        <nav className="space-y-4 flex-1">
+        <nav className="space-y-3 flex-1">
           {steps.map((step) => {
             const isActive = step.number === currentStep;
             const isCompleted = step.number < currentStep;
@@ -190,13 +285,13 @@ export default function CreateShopPage() {
               <button
                 key={step.number}
                 onClick={() => setCurrentStep(step.number)}
-                className={`w-full text-left rounded-3xl px-6 py-5 transition-all ${
-                  isActive ? "bg-white text-black shadow-2xl" : "text-gray-500 hover:text-gray-300"
+                className={`w-full text-left rounded-2xl px-4 py-4 transition-all ${
+                  isActive ? "bg-white text-black shadow-xl" : "text-gray-500 hover:text-gray-300"
                 }`}
               >
-                <div className="flex items-center gap-5">
+                <div className="flex items-center gap-4">
                   <div
-                    className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold ${
+                    className={`w-10 h-10 rounded-full flex items-center justify-center text-base font-bold ${
                       isActive
                         ? "bg-black text-white"
                         : isCompleted
@@ -204,13 +299,13 @@ export default function CreateShopPage() {
                         : "bg-white/10 text-gray-500"
                     }`}
                   >
-                    {isCompleted ? <Check className="w-6 h-6" /> : step.number}
+                    {isCompleted ? <Check className="w-5 h-5" /> : step.number}
                   </div>
                   <div>
                     <div className={`font-semibold ${isActive ? "" : "opacity-80"}`}>
                       {step.title}
                     </div>
-                    <div className="text-sm opacity-70">{step.subtitle}</div>
+                    <div className="text-xs opacity-70">{step.subtitle}</div>
                   </div>
                 </div>
               </button>
@@ -254,7 +349,7 @@ export default function CreateShopPage() {
                         onChange={(e) =>
                           setShopDomain(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-"))
                         }
-                        placeholder="urban-threads"
+                        placeholder="адрес"
                         className="flex-1 px-6 py-5 bg-white/10 rounded-2xl placeholder-gray-500 text-lg focus:outline-none focus:ring-4 focus:ring-cyan-400/30"
                       />
                       <span className="text-lg text-gray-400">.fashionconstruct.ru</span>
@@ -273,11 +368,22 @@ export default function CreateShopPage() {
 
                 <div>
                   <h3 className="text-2xl font-semibold mb-6">Обложка магазина</h3>
-                  <div className="border-2 border-dashed border-white/20 rounded-3xl h-64 flex flex-col items-center justify-center text-gray-400">
-                    <div className="w-16 h-16 bg-white/10 rounded-2xl mb-4" />
-                    <p>Загрузите файл или перетащите его сюда</p>
-                    <p className="text-sm mt-2">PNG, JPG, GIF до 10MB</p>
-                  </div>
+                  <label className="block cursor-pointer">
+                    <input type="file" accept="image/png, image/jpeg, image/gif" onChange={handleCoverImage} className="hidden" />
+                    <div className="border-2 border-dashed border-white/20 rounded-3xl h-64 flex items-center justify-center text-gray-400 overflow-hidden">
+                      {!coverImage ? (
+                        <>
+                          <div className="text-center">
+                            <div className="w-16 h-16 bg-white/10 rounded-2xl mb-4 mx-auto" />
+                            <p>Загрузите файл или перетащите его сюда</p>
+                            <p className="text-sm mt-2">PNG, JPG, GIF до 10MB</p>
+                          </div>
+                        </>
+                      ) : (
+                        <img src={coverImage} alt="Обложка магазина" className="w-full h-full object-cover" />
+                      )}
+                    </div>
+                  </label>
                 </div>
               </div>
             )}
@@ -324,12 +430,12 @@ export default function CreateShopPage() {
                   <input
                     value={newCategory}
                     onChange={(e) => setNewCategory(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && addCategory()}
-                    placeholder="Название новой категории"
+                    onKeyDown={(e) => e.key === "Enter" && addCategory(addingToParentId)}
+                    placeholder={addingToParentId ? "Название новой подкатегории" : "Название новой категории"}
                     className="flex-1 px-6 py-5 bg-white/10 rounded-2xl placeholder-gray-500 text-lg focus:outline-none focus:ring-4 focus:ring-cyan-400/30"
                   />
                   <button
-                    onClick={addCategory}
+                    onClick={() => addCategory(addingToParentId)}
                     className="px-8 py-5 bg-white text-black rounded-2xl font-medium hover:bg-gray-200 transition shadow-lg"
                   >
                     Добавить
@@ -337,28 +443,7 @@ export default function CreateShopPage() {
                 </div>
 
                 <div className="space-y-4">
-                  {categories.map((cat, i) => (
-                    <div
-                      key={i}
-                      className="flex items-center justify-between px-6 py-5 bg-white/5 rounded-2xl hover:bg-white/10 transition group"
-                    >
-                      <div className="flex items-center gap-5 flex-1">
-                        <GripVertical className="w-5 h-5 text-gray-500 cursor-grab opacity-0 group-hover:opacity-100 transition" />
-                        <span className="text-lg font-medium">{cat}</span>
-                      </div>
-                      <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition">
-                        <button onClick={() => moveCategory(i, "up")} className="p-2 hover:bg-white/10 rounded-lg">
-                          <ChevronUp className="w-5 h-5 text-gray-400" />
-                        </button>
-                        <button onClick={() => moveCategory(i, "down")} className="p-2 hover:bg-white/10 rounded-lg">
-                          <ChevronDown className="w-5 h-5 text-gray-400" />
-                        </button>
-                        <button onClick={() => removeCategory(i)} className="p-2 hover:bg-red-500/20 rounded-lg">
-                          <Trash2 className="w-5 h-5 text-red-400" />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+                  <CategoryTree cats={categories} />
                 </div>
               </div>
             )}
@@ -533,7 +618,7 @@ export default function CreateShopPage() {
         </main>
 
         {/* Нижняя панель */}
-        <div className="fixed bottom-0 left-80 right-0 bg-gradient-to-t from-black via-black/95 to-transparent backdrop-blur-md px-12 py-6 flex justify-between items-center">
+        <div className="fixed bottom-0 left-64 right-0 bg-gradient-to-t from-black via-black/95 to-transparent backdrop-blur-md px-12 py-6 flex justify-between items-center">
           <div className="flex items-center gap-8">
             <button
               onClick={() => setCurrentStep((s) => Math.max(1, s - 1))}
@@ -671,7 +756,7 @@ export default function CreateShopPage() {
                   id: Date.now().toString(),
                   name: shopName || "Мой магазин",
                   domain: shopDomain || "my-shop",
-                  coverImage: "https://images.unsplash.com/photo-1558769132-cb1aea458c5e?q=80&w=1200",
+                  coverImage: coverImage || "https://images.unsplash.com/photo-1558769132-cb1aea458c5e?q=80&w=1200",
                   theme: selectedTheme || "Классика Dark",
                   categories,
                   brands,

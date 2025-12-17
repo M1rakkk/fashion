@@ -10,6 +10,8 @@ import DashboardPage from "./pages/dashboard/DashboardPage";
 import ShopsPage from "./pages/shops/ShopsPage";
 import CreateShopPage from "./pages/shops/create/CreateShopPage";
 import StoreEditorPage from "./pages/store/StoreEditorPage";  
+import AnalyticsPage from "./pages/analytics/AnalyticsPage";  // Новый импорт
+import SupportPage from "./pages/support/SupportPage";  // Новый импорт
 import AdminLayout from "./components/layout/AdminLayout";
 import PrivateRoute from "./components/layout/PrivateRoute";
 
@@ -30,6 +32,8 @@ function App() {
         >
           <Route path="/" element={<DashboardPage />} />
           <Route path="/shops" element={<ShopsPage />} />
+          <Route path="/analytics" element={<AnalyticsPage />} />  {/* Добавил сюда */}
+          <Route path="/support" element={<SupportPage />} />  {/* Добавил сюда */}
           {/* другие страницы админки */}
         </Route>
 
