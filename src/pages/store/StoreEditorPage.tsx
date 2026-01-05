@@ -55,7 +55,7 @@ export default function StoreEditorPage() {
   const categories = ["Верхняя одежда", "Нижняя одежда", "Обувь", "Аксессуары"];
   const subcategories = ["Без подкатегории", "Куртки", "Пальто", "Джинсы", "Кроссовки"];
   const brands = shop.brands.length > 0 ? shop.brands : ["Nike", "Adidas", "Zara"];
-  const sizes = ["S", "M", "L", "XL", "XXL"];
+  const sizes = ["S", "M", "L", "XL"];
 
   const handleImage = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

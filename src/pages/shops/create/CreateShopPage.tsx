@@ -24,7 +24,8 @@ const steps = [
   { number: 4, title: "Бренды", subtitle: "Производители" },
   { number: 5, title: "Товары", subtitle: "Наполнение" },
   { number: 6, title: "Новости", subtitle: "Блог и акции" },
-  { number: 7, title: "Готово", subtitle: "Публикация" },
+  { number: 7, title: "Доставка", subtitle: "Настройки доставки и оплаты" },
+  { number: 8, title: "Готово", subtitle: "Публикация" },
 ];
 
 const themes = [
@@ -98,7 +99,12 @@ export default function CreateShopPage() {
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
 
   // Формы
-  const [productForm, setProductForm] = useState({ name: "", price: "", image: "" });
+  const [productForm, setProductForm] = useState({
+    name: "",
+    price: "",
+    image: "",
+    sizes: [] as string[]
+  });
   const [newsForm, setNewsForm] = useState({ title: "", image: "" });
 
   const progress = ((currentStep - 1) / (steps.length - 1)) * 100;
@@ -252,10 +258,16 @@ export default function CreateShopPage() {
           name: productForm.name,
           price: productForm.price + " ₽",
           image: productForm.image,
+          sizes: productForm.sizes,
         },
       ]);
       setIsProductModalOpen(false);
-      setProductForm({ name: "", price: "", image: "" });
+      setProductForm({
+        name: "",
+        price: "",
+        image: "",
+        sizes: []
+      });
     }
   };
 
@@ -586,8 +598,72 @@ export default function CreateShopPage() {
               </div>
             )}
 
-            {/* ШАГ 7 — Готово */}
+            {/* ШАГ 7 — Доставка и оплата */}
             {currentStep === 7 && (
+              <div className="bg-white/5 rounded-3xl p-10">
+                <h3 className="text-2xl font-semibold mb-8">Настройки доставки и оплаты</h3>
+
+                <div className="space-y-6">
+                  {/* Доставка */}
+                  <div>
+                    <h4 className="text-lg font-semibold mb-4">Способы доставки</h4>
+                    <div className="space-y-4">
+                      <label className="flex items-center gap-3">
+                        <input type="checkbox" className="w-5 h-5 accent-cyan-500" />
+                        <span>Самовывоз из магазина</span>
+                      </label>
+                      <label className="flex items-center gap-3">
+                        <input type="checkbox" className="w-5 h-5 accent-cyan-500" />
+                        <span>Курьерская доставка по городу</span>
+                      </label>
+                      <label className="flex items-center gap-3">
+                        <input type="checkbox" className="w-5 h-5 accent-cyan-500" />
+                        <span>Доставка по России</span>
+                      </label>
+                    </div>
+
+                    <div className="mt-6">
+                      <label className="block text-sm text-gray-400 mb-2">Стоимость доставки (₽)</label>
+                      <input
+                        type="number"
+                        placeholder="300"
+                        className="w-full max-w-xs px-4 py-3 bg-white/10 rounded-xl"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Оплата */}
+                  <div>
+                    <h4 className="text-lg font-semibold mb-4">Способы оплаты</h4>
+                    <div className="space-y-4">
+                      <label className="flex items-center gap-3">
+                        <input type="checkbox" className="w-5 h-5 accent-cyan-500" />
+                        <span>Наличные при получении</span>
+                      </label>
+                      <label className="flex items-center gap-3">
+                        <input type="checkbox" className="w-5 h-5 accent-cyan-500" />
+                        <span>Банковская карта онлайн</span>
+                      </label>
+
+                    </div>
+                  </div>
+
+                  {/* Возврат */}
+                  <div>
+                    <h4 className="text-lg font-semibold mb-4">Условия возврата</h4>
+                    <textarea
+                      rows={3}
+                      placeholder="Условия возврата товара..."
+                      className="w-full px-4 py-3 bg-white/10 rounded-xl resize-none"
+                    />
+                    <p className="text-sm text-gray-400 mt-2">На основании закона «О защите прав потребителей»</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ШАГ 8 — Готово */}
+            {currentStep === 8 && (
               <div className="flex items-center justify-center min-h-full">
                 <div className="bg-white/5 rounded-3xl p-12 text-center max-w-md">
                   <div className="w-24 h-24 mx-auto mb-8 bg-cyan-500/20 rounded-full flex items-center justify-center">
@@ -679,6 +755,32 @@ export default function CreateShopPage() {
                 placeholder="Цена (₽)"
                 className="w-full px-6 py-5 bg-white/10 rounded-2xl"
               />
+
+              <div>
+                        <p className="text-sm text-gray-400 mb-3">Размеры</p>
+                        <div className="flex gap-2">
+                          {["S", "M", "L", "XL"].map((size) => (
+                            <button
+                              key={size}
+                              type="button"
+                              onClick={() => {
+                                const newSizes = productForm.sizes.includes(size)
+                                  ? productForm.sizes.filter(s => s !== size)
+                                  : [...productForm.sizes, size];
+                                setProductForm({ ...productForm, sizes: newSizes });
+                              }}
+                              className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
+                                productForm.sizes.includes(size)
+                                  ? "bg-white text-black"
+                                  : "bg-white/10 text-gray-400 hover:bg-white/20"
+                              }`}
+                            >
+                              {size}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
             </div>
             <div className="flex justify-end gap-4 p-8 border-t border-white/10">
               <button onClick={() => setIsProductModalOpen(false)} className="px-8 py-4 text-gray-400 hover:text-white">
@@ -762,6 +864,12 @@ export default function CreateShopPage() {
                   brands,
                   products,
                   news,
+                  deliverySettings: {
+                      methods: ["courier", "pickup"],
+                      price: 300,
+                      paymentMethods: ["cash", "card"],
+                      returnPolicy: "Стандартные условия возврата",
+                    },
                   createdAt: Date.now(),
                 };
 

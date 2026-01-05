@@ -6,6 +6,7 @@ export interface Product {
   name: string;
   price: string;
   image?: string;
+  sizes?: string[];
 }
 
 export interface Shop {
@@ -18,6 +19,12 @@ export interface Shop {
   brands: string[];
   products: Product[];  
   news: any[];
+  deliverySettings?: {
+      methods: string[];
+      price?: number;
+      paymentMethods: string[];
+      returnPolicy?: string;
+    };
   createdAt: number;
 }
 
