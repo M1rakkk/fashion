@@ -7,6 +7,7 @@ import { RootState, AppDispatch } from "../../app/store";
 import { removeShop } from "../../features/shops/shopsSlice";
 import { fetchMyShops, deleteShop } from "../../features/shops/shopsThunks";
 import { Plus, Settings, Trash2, AlertCircle, Loader2 } from "lucide-react";
+import { productsApi, categoriesApi } from "../../api/products.api";
 
 const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
@@ -25,7 +26,33 @@ const DashboardPage: React.FC = () => {
     }
   }, [dispatch, isAuthenticated]);
 
+  // Fetch product and category counts for each shop
+  useEffect(() => {
+    const fetchCounts = async () => {
+      const counts: Record<string, { products: number; categories: number }> = {};
+      for (const shop of shops) {
+        try {
+          const [productsRes, categoriesRes] = await Promise.all([
+            productsApi.getByShopId(shop.id),
+            categoriesApi.getByShopId(shop.id),
+          ]);
+          counts[shop.id] = {
+            products: productsRes.data.length,
+            categories: categoriesRes.data.length,
+          };
+        } catch (error) {
+          counts[shop.id] = { products: 0, categories: 0 };
+        }
+      }
+      setShopCounts(counts);
+    };
+    if (shops.length > 0) {
+      fetchCounts();
+    }
+  }, [shops]);
+
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [shopCounts, setShopCounts] = useState<Record<string, { products: number; categories: number }>>({});
 
   const handleDelete = () => {
     if (deleteId) {
@@ -92,9 +119,9 @@ const DashboardPage: React.FC = () => {
                     {shop.domain}.fashionconstruct.ru
                   </p>
                   <div className="flex items-center gap-4 mt-4 text-xs text-gray-400">
-                    <span>{'products' in shop ? shop.products.length : 0} товаров</span>
+                    <span>{shopCounts[shop.id]?.products ?? 0} товаров</span>
                     <span>•</span>
-                    <span>{'categories' in shop ? shop.categories.length : 0} категорий</span>
+                    <span>{shopCounts[shop.id]?.categories ?? 0} категорий</span>
                   </div>
 
                   <div className="flex gap-2 mt-5">
@@ -108,7 +135,10 @@ const DashboardPage: React.FC = () => {
                       Управлять
                     </button>
                     <button
-                      onClick={(e) => e.stopPropagation()}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/stores/${shop.id}?tab=settings`);
+                      }}
                       className="p-2.5 bg-white/10 rounded-xl hover:bg-white/20 transition"
                     >
                       <Settings className="w-4 h-4" />

@@ -1,7 +1,7 @@
 // src/pages/store/StoreEditorPage.tsx
 
 import React, { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { RootState } from "../../app/store";
 import {
@@ -33,7 +33,9 @@ import {
 export default function StoreEditorPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState("Товары");
+  const [searchParams] = useSearchParams();
+  const initialTab = searchParams.get("tab") === "settings" ? "Общие" : "Товары";
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
