@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useDispatch } from "react-redux";
 import {
   ChevronRight,
   ChevronLeft,
@@ -14,8 +15,12 @@ import {
   X,
   Upload,
   Check,
+  Loader2,
 } from "lucide-react";
-import { store } from "../../../app/store"; 
+import { AppDispatch } from "../../../app/store";
+import { createShop } from "../../../features/shops/shopsThunks";
+import { addShop } from "../../../features/shops/shopsSlice";
+import { filesApi } from "../../../api/files.api"; 
 
 const steps = [
   { number: 1, title: "Инфо", subtitle: "Основная информация" },
@@ -42,6 +47,7 @@ interface Product {
   image: string;
   name: string;
   price: string;
+  sizes?: string[];
 }
 interface News {
   id: string;
@@ -57,6 +63,8 @@ interface Category {
 
 export default function CreateShopPage() {
   const navigate = useNavigate();
+  const dispatch = useDispatch<AppDispatch>();
+  const [isCreating, setIsCreating] = useState(false);
 
   const [currentStep, setCurrentStep] = useState(1);
   const [selectedTheme, setSelectedTheme] = useState<string | null>(null);
@@ -110,21 +118,26 @@ export default function CreateShopPage() {
   const progress = ((currentStep - 1) / (steps.length - 1)) * 100;
 
   // === Вспомогательные функции ===
-  const handleImage = (
+  const handleImage = <T extends { image: string }>(
     e: React.ChangeEvent<HTMLInputElement>,
-    setter: React.Dispatch<React.SetStateAction<any>>
+    setter: React.Dispatch<React.SetStateAction<T>>
   ) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onloadend = () => setter((prev) => ({ ...prev, image: reader.result as string }));
+      reader.onloadend = () => setter((prev: T) => ({ ...prev, image: reader.result as string }));
       reader.readAsDataURL(file);
     }
   };
 
+  // Store the actual file for upload
+  const [coverImageFile, setCoverImageFile] = useState<File | null>(null);
+  const [isUploadingCover, setIsUploadingCover] = useState(false);
+
   const handleCoverImage = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      setCoverImageFile(file);
       const reader = new FileReader();
       reader.onloadend = () => setCoverImage(reader.result as string);
       reader.readAsDataURL(file);
@@ -853,31 +866,86 @@ export default function CreateShopPage() {
               {shopName || "Ваш магазин"} успешно опубликован!
             </p>
             <button
-              onClick={() => {
-                const newShop = {
-                  id: Date.now().toString(),
-                  name: shopName || "Мой магазин",
-                  domain: shopDomain || "my-shop",
-                  coverImage: coverImage || "https://images.unsplash.com/photo-1558769132-cb1aea458c5e?q=80&w=1200",
-                  theme: selectedTheme || "Классика Dark",
-                  categories,
-                  brands,
-                  products,
-                  news,
-                  deliverySettings: {
+              disabled={isCreating}
+              onClick={async () => {
+                setIsCreating(true);
+                try {
+                  // Step 1: Upload cover image if provided
+                  let uploadedImageUrl = "";
+                  if (coverImageFile) {
+                    try {
+                      const uploadResponse = await filesApi.uploadToCategory(coverImageFile, "SHOP_AVATAR");
+                      uploadedImageUrl = uploadResponse.data.fileUrl;
+                      console.log("Cover image uploaded:", uploadedImageUrl);
+                    } catch (uploadError) {
+                      console.warn("Failed to upload cover image, continuing without it:", uploadError);
+                    }
+                  }
+
+                  // Step 2: Create shop via API with the uploaded image URL
+                  const result = await dispatch(createShop({
+                    shopName: shopName || "Мой магазин",
+                    shopUrl: shopDomain || "my-shop",
+                    description: "",
+                    designCode: selectedTheme || "Классика Dark",
+                    pfpUrl: uploadedImageUrl || undefined,
+                  }));
+                  
+                  if (createShop.fulfilled.match(result)) {
+                    navigate("/");
+                  } else {
+                    // Fallback to local storage if API fails
+                    const newShop = {
+                      id: Date.now().toString(),
+                      name: shopName || "Мой магазин",
+                      domain: shopDomain || "my-shop",
+                      coverImage: uploadedImageUrl || coverImage || "https://images.unsplash.com/photo-1558769132-cb1aea458c5e?q=80&w=1200",
+                      theme: selectedTheme || "Классика Dark",
+                      categories: categories.map(c => c.name),
+                      brands,
+                      products,
+                      news,
+                      deliverySettings: {
+                        methods: ["courier", "pickup"],
+                        price: 300,
+                        paymentMethods: ["cash", "card"],
+                        returnPolicy: "Стандартные условия возврата",
+                      },
+                      createdAt: Date.now(),
+                    };
+                    dispatch(addShop(newShop));
+                    navigate("/");
+                  }
+                } catch (error) {
+                  console.error("Failed to create shop:", error);
+                  // Fallback to local storage
+                  const newShop = {
+                    id: Date.now().toString(),
+                    name: shopName || "Мой магазин",
+                    domain: shopDomain || "my-shop",
+                    coverImage: coverImage || "https://images.unsplash.com/photo-1558769132-cb1aea458c5e?q=80&w=1200",
+                    theme: selectedTheme || "Классика Dark",
+                    categories: categories.map(c => c.name),
+                    brands,
+                    products,
+                    news,
+                    deliverySettings: {
                       methods: ["courier", "pickup"],
                       price: 300,
                       paymentMethods: ["cash", "card"],
                       returnPolicy: "Стандартные условия возврата",
                     },
-                  createdAt: Date.now(),
-                };
-
-                store.dispatch({ type: "shops/addShop", payload: newShop });
-                navigate("/");
+                    createdAt: Date.now(),
+                  };
+                  dispatch(addShop(newShop));
+                  navigate("/");
+                } finally {
+                  setIsCreating(false);
+                }
               }}
-              className="px-10 py-4 bg-white text-black rounded-full font-semibold hover:bg-gray-200 shadow-xl"
+              className="px-10 py-4 bg-white text-black rounded-full font-semibold hover:bg-gray-200 shadow-xl disabled:opacity-50 flex items-center gap-2"
             >
+              {isCreating && <Loader2 className="w-5 h-5 animate-spin" />}
               Перейти в личный кабинет
             </button>
           </div>

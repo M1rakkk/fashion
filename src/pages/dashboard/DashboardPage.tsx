@@ -1,16 +1,29 @@
 // src/pages/dashboard/DashboardPage.tsx
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
-import { RootState } from "../../app/store";
-import { removeShop } from "../../features/shops/shopsSlice"; // ← важно!
-import { Plus, Settings, Trash2, AlertCircle } from "lucide-react";
+import { RootState, AppDispatch } from "../../app/store";
+import { removeShop } from "../../features/shops/shopsSlice";
+import { fetchMyShops, deleteShop } from "../../features/shops/shopsThunks";
+import { Plus, Settings, Trash2, AlertCircle, Loader2 } from "lucide-react";
 
 const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
-  const dispatch = useDispatch();
-  const shops = useSelector((state: RootState) => state.shops.items);
+  const dispatch = useDispatch<AppDispatch>();
+  
+  // Get shops from API (items) and fallback to local storage (localItems)
+  const { items: apiShops, localItems, loading, error } = useSelector((state: RootState) => state.shops);
+  const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
+  
+  // Combine API shops with local shops for backward compatibility
+  const shops = apiShops.length > 0 ? apiShops : localItems;
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      dispatch(fetchMyShops());
+    }
+  }, [dispatch, isAuthenticated]);
 
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
@@ -79,9 +92,9 @@ const DashboardPage: React.FC = () => {
                     {shop.domain}.fashionconstruct.ru
                   </p>
                   <div className="flex items-center gap-4 mt-4 text-xs text-gray-400">
-                    <span>{shop.products.length} товаров</span>
+                    <span>{'products' in shop ? shop.products.length : 0} товаров</span>
                     <span>•</span>
-                    <span>{shop.categories.length} категорий</span>
+                    <span>{'categories' in shop ? shop.categories.length : 0} категорий</span>
                   </div>
 
                   <div className="flex gap-2 mt-5">

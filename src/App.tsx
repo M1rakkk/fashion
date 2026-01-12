@@ -4,7 +4,6 @@ import React from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 
 import LoginPage from "./pages/auth/LoginPage";
-import ConfirmPage from "./pages/auth/ConfirmPage";
 
 import DashboardPage from "./pages/dashboard/DashboardPage";
 import ShopsPage from "./pages/shops/ShopsPage";
@@ -20,7 +19,6 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/confirm" element={<ConfirmPage />} />
 
         {/* Страницы с AdminLayout   */}
         <Route

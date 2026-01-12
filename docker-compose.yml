@@ -4,10 +4,10 @@ services:
     build:
       context: .
       args:
-        VITE_API_URL: ${VITE_API_URL:-http://localhost:8000}  #ЛОКАЛЬНО 
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:8081}  #ЛОКАЛЬНО
     ports:
       - "3000:80"
     environment:
-      VITE_API_URL: ${VITE_API_URL:-http://localhost:8000}
+      VITE_API_URL: ${VITE_API_URL:-http://localhost:8081}
     restart: unless-stopped
     container_name: fashionconstruct-admin
