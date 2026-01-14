@@ -20,7 +20,8 @@ import {
 import { AppDispatch } from "../../../app/store";
 import { createShop } from "../../../features/shops/shopsThunks";
 import { addShop } from "../../../features/shops/shopsSlice";
-import { filesApi } from "../../../api/files.api"; 
+import { filesApi } from "../../../api/files.api";
+import { showShopCreatedNotification } from "../../../utils/notifications"; 
 
 const steps = [
   { number: 1, title: "Инфо", subtitle: "Основная информация" },
@@ -892,6 +893,7 @@ export default function CreateShopPage() {
                   }));
                   
                   if (createShop.fulfilled.match(result)) {
+                    showShopCreatedNotification(dispatch, shopName || "Мой магазин");
                     navigate("/");
                   } else {
                     // Fallback to local storage if API fails
@@ -914,6 +916,7 @@ export default function CreateShopPage() {
                       createdAt: Date.now(),
                     };
                     dispatch(addShop(newShop));
+                    showShopCreatedNotification(dispatch, shopName || "Мой магазин");
                     navigate("/");
                   }
                 } catch (error) {
@@ -938,6 +941,7 @@ export default function CreateShopPage() {
                     createdAt: Date.now(),
                   };
                   dispatch(addShop(newShop));
+                  showShopCreatedNotification(dispatch, shopName || "Мой магазин");
                   navigate("/");
                 } finally {
                   setIsCreating(false);

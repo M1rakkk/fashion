@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { useSelector } from "react-redux";
-import { RootState } from "../../app/store";
+import { useSelector, useDispatch } from "react-redux";
+import { RootState, AppDispatch } from "../../app/store";
 import {
   productsApi,
   categoriesApi,
@@ -15,6 +15,7 @@ import {
 import { filesApi } from "../../api/files.api";
 import { shopsApi, IShopDisplay, toShopDisplay, IShopResponse } from "../../api/shops.api";
 import { newsApi, INewsResponse } from "../../api/news.api";
+import { showProductAddedNotification } from "../../utils/notifications";
 import {
   ChevronLeft,
   Package,
@@ -33,6 +34,7 @@ import {
 export default function StoreEditorPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const dispatch = useDispatch<AppDispatch>();
   const [searchParams] = useSearchParams();
   const initialTab = searchParams.get("tab") === "settings" ? "Общие" : "Товары";
   const [activeTab, setActiveTab] = useState(initialTab);
@@ -244,6 +246,11 @@ export default function StoreEditorPage() {
 
       const response = await productsApi.create(productData);
       setProducts((prev) => [...prev, response.data]);
+      
+      // Показываем уведомление о добавлении товара
+      const shopName = shop?.name || "Магазин";
+      showProductAddedNotification(dispatch, form.name.trim(), shopName);
+      
       setIsModalOpen(false);
       setForm({
         image: "",

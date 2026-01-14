@@ -7,7 +7,7 @@ import Header from "../Header";
 
 const AdminLayout: React.FC = () => {
   return (
-    <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)] flex">
+    <div className="min-h-screen bg-slate-900 flex">
       {/* Левое меню */}
       <Sidebar />
 
@@ -17,7 +17,7 @@ const AdminLayout: React.FC = () => {
         <Header />
 
         {/* Контент */}
-        <main className="p-6">
+        <main className="flex-1">
           <Outlet />
         </main>
       </div>
