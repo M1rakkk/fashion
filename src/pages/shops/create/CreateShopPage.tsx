@@ -22,6 +22,13 @@ import { createShop } from "../../../features/shops/shopsThunks";
 import { addShop } from "../../../features/shops/shopsSlice";
 import { filesApi } from "../../../api/files.api";
 import { showShopCreatedNotification } from "../../../utils/notifications";
+import {
+  brandsApi,
+  categoriesApi,
+  productsApi,
+} from "../../../api/products.api";
+import { sizesApi } from "../../../api/sizes.api";
+import { productSizesApi } from "../../../api/product-sizes.api";
 
 const steps = [
   { number: 1, title: "Инфо", subtitle: "Основная информация" },
@@ -102,6 +109,17 @@ export default function CreateShopPage() {
   // Новости
   const [news, setNews] = useState<News[]>([]);
 
+  // Доставка и оплата (локально для UI; бекенд shop-service это сейчас не хранит)
+  const [deliveryMethods, setDeliveryMethods] = useState({
+    pickup: false,
+    cityCourier: false,
+    russiaDelivery: false,
+  });
+  const [paymentMethods, setPaymentMethods] = useState({
+    cash: false,
+    card: false,
+  });
+
   // Модалки
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   const [isNewsModalOpen, setIsNewsModalOpen] = useState(false);
@@ -128,6 +146,71 @@ export default function CreateShopPage() {
       const reader = new FileReader();
       reader.onloadend = () => setter((prev: T) => ({ ...prev, image: reader.result as string }));
       reader.readAsDataURL(file);
+    }
+  };
+
+  const persistCatalogToBackend = async (shopId: string) => {
+    const idMap = new Map<string, string>();
+
+    const createCategoryTree = async (nodes: Category[], parentId?: string) => {
+      for (const node of nodes) {
+        const created = await categoriesApi.create({
+          title: node.name,
+          shopId,
+          parentId: parentId || undefined,
+        });
+        idMap.set(node.id, created.data.id);
+        if (node.children && node.children.length > 0) {
+          await createCategoryTree(node.children, created.data.id);
+        }
+      }
+    };
+
+    await createCategoryTree(categories);
+
+    const createdBrands = new Map<string, string>();
+    for (const brandName of brands) {
+      const name = String(brandName || '').trim();
+      if (!name) continue;
+      const res = await brandsApi.create({ name, shopId });
+      createdBrands.set(name.toLowerCase(), res.data.id);
+    }
+
+    const sizeListRes = await sizesApi.getAll();
+    const sizeIdByValue = new Map<string, string>();
+    for (const s of sizeListRes.data || []) {
+      sizeIdByValue.set(String(s.value).toUpperCase(), s.id);
+    }
+
+    for (const p of products) {
+      const rawPrice = String(p.price || '').replace(/[^0-9]/g, '');
+      const parsedPrice = rawPrice ? Number(rawPrice) : 0;
+
+      const productRes = await productsApi.create({
+        shopId,
+        name: p.name || 'Товар',
+        description: '',
+        price: parsedPrice,
+        imageUrls: p.image ? [p.image] : undefined,
+        isActive: true,
+      });
+
+      const createdProductId = productRes.data.id;
+
+      const sizes = (p.sizes || []).map(s => String(s).toUpperCase()).filter(Boolean);
+      for (const sizeValue of sizes) {
+        let sizeId = sizeIdByValue.get(sizeValue);
+        if (!sizeId) {
+          const createdSize = await sizesApi.create({ value: sizeValue });
+          sizeId = createdSize.data.id;
+          sizeIdByValue.set(sizeValue, sizeId);
+        }
+        await productSizesApi.create({
+          productId: createdProductId,
+          sizeId,
+          quantityAvailable: 0,
+        });
+      }
     }
   };
 
@@ -623,15 +706,30 @@ export default function CreateShopPage() {
                     <h4 className="text-lg font-semibold mb-4">Способы доставки</h4>
                     <div className="space-y-4">
                       <label className="flex items-center gap-3">
-                        <input type="checkbox" className="w-5 h-5 accent-cyan-500" />
+                        <input
+                          type="checkbox"
+                          className="w-5 h-5 accent-cyan-500"
+                          checked={deliveryMethods.pickup}
+                          onChange={(e) => setDeliveryMethods(prev => ({ ...prev, pickup: e.target.checked }))}
+                        />
                         <span>Самовывоз из магазина</span>
                       </label>
                       <label className="flex items-center gap-3">
-                        <input type="checkbox" className="w-5 h-5 accent-cyan-500" />
+                        <input
+                          type="checkbox"
+                          className="w-5 h-5 accent-cyan-500"
+                          checked={deliveryMethods.cityCourier}
+                          onChange={(e) => setDeliveryMethods(prev => ({ ...prev, cityCourier: e.target.checked }))}
+                        />
                         <span>Курьерская доставка по городу</span>
                       </label>
                       <label className="flex items-center gap-3">
-                        <input type="checkbox" className="w-5 h-5 accent-cyan-500" />
+                        <input
+                          type="checkbox"
+                          className="w-5 h-5 accent-cyan-500"
+                          checked={deliveryMethods.russiaDelivery}
+                          onChange={(e) => setDeliveryMethods(prev => ({ ...prev, russiaDelivery: e.target.checked }))}
+                        />
                         <span>Доставка по России</span>
                       </label>
                     </div>
@@ -651,11 +749,21 @@ export default function CreateShopPage() {
                     <h4 className="text-lg font-semibold mb-4">Способы оплаты</h4>
                     <div className="space-y-4">
                       <label className="flex items-center gap-3">
-                        <input type="checkbox" className="w-5 h-5 accent-cyan-500" />
+                        <input
+                          type="checkbox"
+                          className="w-5 h-5 accent-cyan-500"
+                          checked={paymentMethods.cash}
+                          onChange={(e) => setPaymentMethods(prev => ({ ...prev, cash: e.target.checked }))}
+                        />
                         <span>Наличные при получении</span>
                       </label>
                       <label className="flex items-center gap-3">
-                        <input type="checkbox" className="w-5 h-5 accent-cyan-500" />
+                        <input
+                          type="checkbox"
+                          className="w-5 h-5 accent-cyan-500"
+                          checked={paymentMethods.card}
+                          onChange={(e) => setPaymentMethods(prev => ({ ...prev, card: e.target.checked }))}
+                        />
                         <span>Банковская карта онлайн</span>
                       </label>
 
@@ -896,6 +1004,11 @@ export default function CreateShopPage() {
                     const createdShopId = (result.payload as any)?.id;
                     showShopCreatedNotification(dispatch, shopName || "Мой магазин");
                     if (createdShopId) {
+                      try {
+                        await persistCatalogToBackend(createdShopId);
+                      } catch (e) {
+                        console.warn("Failed to persist catalog to backend:", e);
+                      }
                       navigate(`/stores/${createdShopId}`);
                     } else {
                       navigate("/");
@@ -915,7 +1028,7 @@ export default function CreateShopPage() {
                       deliverySettings: {
                         methods: ["courier", "pickup"],
                         price: 300,
-                        paymentMethods: ["cash", "card"],
+                        paymentMethods: [],
                         returnPolicy: "Стандартные условия возврата",
                       },
                       createdAt: Date.now(),
