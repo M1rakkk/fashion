@@ -29,6 +29,7 @@ import {
 } from "../../../api/products.api";
 import { sizesApi } from "../../../api/sizes.api";
 import { productSizesApi } from "../../../api/product-sizes.api";
+import { newsApi } from "../../../api/news.api";
 
 const steps = [
   { number: 1, title: "Инфо", subtitle: "Основная информация" },
@@ -37,8 +38,7 @@ const steps = [
   { number: 4, title: "Бренды", subtitle: "Производители" },
   { number: 5, title: "Товары", subtitle: "Наполнение" },
   { number: 6, title: "Новости", subtitle: "Блог и акции" },
-  { number: 7, title: "Доставка", subtitle: "Настройки доставки и оплаты" },
-  { number: 8, title: "Готово", subtitle: "Публикация" },
+  { number: 7, title: "Готово", subtitle: "Публикация" },
 ];
 
 const themes = [
@@ -53,14 +53,19 @@ const themes = [
 interface Product {
   id: string;
   image: string;
+  imageFile?: File | null;
   name: string;
   price: string;
-  sizes?: string[];
+  categoryId?: string;
+  brandName?: string;
+  sizeQuantities?: Record<string, string>;
 }
 interface News {
   id: string;
   image: string;
+  imageFile?: File | null;
   title: string;
+  content?: string;
 }
 
 interface Category {
@@ -109,17 +114,6 @@ export default function CreateShopPage() {
   // Новости
   const [news, setNews] = useState<News[]>([]);
 
-  // Доставка и оплата (локально для UI; бекенд shop-service это сейчас не хранит)
-  const [deliveryMethods, setDeliveryMethods] = useState({
-    pickup: false,
-    cityCourier: false,
-    russiaDelivery: false,
-  });
-  const [paymentMethods, setPaymentMethods] = useState({
-    cash: false,
-    card: false,
-  });
-
   // Модалки
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   const [isNewsModalOpen, setIsNewsModalOpen] = useState(false);
@@ -130,23 +124,54 @@ export default function CreateShopPage() {
     name: "",
     price: "",
     image: "",
-    sizes: [] as string[]
+    imageFile: null as File | null,
+    categoryId: "",
+    brandName: "",
+    sizeQuantities: {
+      S: "",
+      M: "",
+      L: "",
+      XL: "",
+    } as Record<string, string>,
   });
-  const [newsForm, setNewsForm] = useState({ title: "", image: "" });
+  const [newsForm, setNewsForm] = useState({
+    title: "",
+    content: "",
+    image: "",
+    imageFile: null as File | null,
+  });
 
   const progress = ((currentStep - 1) / (steps.length - 1)) * 100;
 
   // === Вспомогательные функции ===
-  const handleImage = <T extends { image: string }>(
-    e: React.ChangeEvent<HTMLInputElement>,
-    setter: React.Dispatch<React.SetStateAction<T>>
-  ) => {
+  const handleProductImage = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      setProductForm((prev) => ({ ...prev, imageFile: file }));
       const reader = new FileReader();
-      reader.onloadend = () => setter((prev: T) => ({ ...prev, image: reader.result as string }));
+      reader.onloadend = () =>
+        setProductForm((prev) => ({ ...prev, image: reader.result as string }));
       reader.readAsDataURL(file);
     }
+  };
+
+  const handleNewsImage = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setNewsForm((prev) => ({ ...prev, imageFile: file }));
+      const reader = new FileReader();
+      reader.onloadend = () =>
+        setNewsForm((prev) => ({ ...prev, image: reader.result as string }));
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const flattenCategories = (nodes: Category[], depth = 0): Array<{ id: string; label: string }> => {
+    return nodes.flatMap((node) => {
+      const label = `${"-- ".repeat(depth)}${node.name}`;
+      const children = node.children?.length ? flattenCategories(node.children, depth + 1) : [];
+      return [{ id: node.id, label }, ...children];
+    });
   };
 
   const persistCatalogToBackend = async (shopId: string) => {
@@ -176,29 +201,51 @@ export default function CreateShopPage() {
       createdBrands.set(name.toLowerCase(), res.data.id);
     }
 
-    const sizeListRes = await sizesApi.getAll();
     const sizeIdByValue = new Map<string, string>();
-    for (const s of sizeListRes.data || []) {
-      sizeIdByValue.set(String(s.value).toUpperCase(), s.id);
+    try {
+      const sizeListRes = await sizesApi.getAll();
+      for (const s of sizeListRes.data || []) {
+        sizeIdByValue.set(String(s.value).toUpperCase(), s.id);
+      }
+    } catch {
+      // ignore sizes fetch errors
     }
 
     for (const p of products) {
       const rawPrice = String(p.price || '').replace(/[^0-9]/g, '');
       const parsedPrice = rawPrice ? Number(rawPrice) : 0;
+      let imageUrls: string[] | undefined;
+      if (p.imageFile) {
+        try {
+          const uploadRes = await filesApi.uploadToCategory(p.imageFile, "PRODUCT_IMAGE");
+          imageUrls = [uploadRes.data.fileUrl];
+        } catch {
+          // ignore image upload errors
+        }
+      }
+
+      const categoryId = p.categoryId ? idMap.get(p.categoryId) : undefined;
+      const brandId = p.brandName ? createdBrands.get(p.brandName.toLowerCase()) : undefined;
 
       const productRes = await productsApi.create({
         shopId,
-        name: p.name || 'Товар',
+        name: p.name || "Товар",
         description: '',
         price: parsedPrice,
-        imageUrls: p.image ? [p.image] : undefined,
+        categoryId: categoryId || undefined,
+        brandId: brandId || undefined,
+        imageUrls,
         isActive: true,
       });
 
       const createdProductId = productRes.data.id;
 
-      const sizes = (p.sizes || []).map(s => String(s).toUpperCase()).filter(Boolean);
-      for (const sizeValue of sizes) {
+      const sizeEntries = Object.entries(p.sizeQuantities || {})
+        .map(([value, qtyStr]) => ({ value, qty: Number(qtyStr || 0) }))
+        .filter(x => Number.isFinite(x.qty) && x.qty > 0);
+
+      for (const entry of sizeEntries) {
+        const sizeValue = String(entry.value).toUpperCase();
         let sizeId = sizeIdByValue.get(sizeValue);
         if (!sizeId) {
           const createdSize = await sizesApi.create({ value: sizeValue });
@@ -208,8 +255,32 @@ export default function CreateShopPage() {
         await productSizesApi.create({
           productId: createdProductId,
           sizeId,
-          quantityAvailable: 0,
+          quantityAvailable: entry.qty,
         });
+      }
+    }
+
+    for (const item of news) {
+      const title = String(item.title || "").trim() || "Новость";
+      const content = String(item.content || "").trim() || title;
+      let previewImageUrl: string | undefined;
+      if (item.imageFile) {
+        try {
+          const uploadRes = await filesApi.uploadToCategory(item.imageFile, "NEWS_IMAGE");
+          previewImageUrl = uploadRes.data.fileUrl;
+        } catch {
+          // ignore upload errors
+        }
+      }
+      try {
+        await newsApi.create({
+          title,
+          content,
+          previewImageUrl,
+          isPublished: true,
+        });
+      } catch {
+        // ignore per-item errors
       }
     }
   };
@@ -355,7 +426,10 @@ export default function CreateShopPage() {
           name: productForm.name,
           price: productForm.price + " ₽",
           image: productForm.image,
-          sizes: productForm.sizes,
+          imageFile: productForm.imageFile,
+          categoryId: productForm.categoryId || undefined,
+          brandName: productForm.brandName || undefined,
+          sizeQuantities: productForm.sizeQuantities,
         },
       ]);
       setIsProductModalOpen(false);
@@ -363,7 +437,15 @@ export default function CreateShopPage() {
         name: "",
         price: "",
         image: "",
-        sizes: []
+        imageFile: null,
+        categoryId: "",
+        brandName: "",
+        sizeQuantities: {
+          S: "",
+          M: "",
+          L: "",
+          XL: "",
+        },
       });
     }
   };
@@ -372,12 +454,20 @@ export default function CreateShopPage() {
     if (newsForm.title) {
       setNews([
         ...news,
-        { id: Date.now().toString(), title: newsForm.title, image: newsForm.image },
+        {
+          id: Date.now().toString(),
+          title: newsForm.title,
+          content: newsForm.content,
+          image: newsForm.image,
+          imageFile: newsForm.imageFile,
+        },
       ]);
       setIsNewsModalOpen(false);
-      setNewsForm({ title: "", image: "" });
+      setNewsForm({ title: "", content: "", image: "", imageFile: null });
     }
   };
+
+  const categoryOptions = flattenCategories(categories);
 
   return (
     <div className="min-h-screen flex bg-[#0a0a0f] text-white">
@@ -695,97 +785,8 @@ export default function CreateShopPage() {
               </div>
             )}
 
-            {/* ШАГ 7 — Доставка и оплата */}
+            {/* ШАГ 7 — Готово */}
             {currentStep === 7 && (
-              <div className="bg-white/5 rounded-3xl p-10">
-                <h3 className="text-2xl font-semibold mb-8">Настройки доставки и оплаты</h3>
-
-                <div className="space-y-6">
-                  {/* Доставка */}
-                  <div>
-                    <h4 className="text-lg font-semibold mb-4">Способы доставки</h4>
-                    <div className="space-y-4">
-                      <label className="flex items-center gap-3">
-                        <input
-                          type="checkbox"
-                          className="w-5 h-5 accent-cyan-500"
-                          checked={deliveryMethods.pickup}
-                          onChange={(e) => setDeliveryMethods(prev => ({ ...prev, pickup: e.target.checked }))}
-                        />
-                        <span>Самовывоз из магазина</span>
-                      </label>
-                      <label className="flex items-center gap-3">
-                        <input
-                          type="checkbox"
-                          className="w-5 h-5 accent-cyan-500"
-                          checked={deliveryMethods.cityCourier}
-                          onChange={(e) => setDeliveryMethods(prev => ({ ...prev, cityCourier: e.target.checked }))}
-                        />
-                        <span>Курьерская доставка по городу</span>
-                      </label>
-                      <label className="flex items-center gap-3">
-                        <input
-                          type="checkbox"
-                          className="w-5 h-5 accent-cyan-500"
-                          checked={deliveryMethods.russiaDelivery}
-                          onChange={(e) => setDeliveryMethods(prev => ({ ...prev, russiaDelivery: e.target.checked }))}
-                        />
-                        <span>Доставка по России</span>
-                      </label>
-                    </div>
-
-                    <div className="mt-6">
-                      <label className="block text-sm text-gray-400 mb-2">Стоимость доставки (₽)</label>
-                      <input
-                        type="number"
-                        placeholder="300"
-                        className="w-full max-w-xs px-4 py-3 bg-white/10 rounded-xl"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Оплата */}
-                  <div>
-                    <h4 className="text-lg font-semibold mb-4">Способы оплаты</h4>
-                    <div className="space-y-4">
-                      <label className="flex items-center gap-3">
-                        <input
-                          type="checkbox"
-                          className="w-5 h-5 accent-cyan-500"
-                          checked={paymentMethods.cash}
-                          onChange={(e) => setPaymentMethods(prev => ({ ...prev, cash: e.target.checked }))}
-                        />
-                        <span>Наличные при получении</span>
-                      </label>
-                      <label className="flex items-center gap-3">
-                        <input
-                          type="checkbox"
-                          className="w-5 h-5 accent-cyan-500"
-                          checked={paymentMethods.card}
-                          onChange={(e) => setPaymentMethods(prev => ({ ...prev, card: e.target.checked }))}
-                        />
-                        <span>Банковская карта онлайн</span>
-                      </label>
-
-                    </div>
-                  </div>
-
-                  {/* Возврат */}
-                  <div>
-                    <h4 className="text-lg font-semibold mb-4">Условия возврата</h4>
-                    <textarea
-                      rows={3}
-                      placeholder="Условия возврата товара..."
-                      className="w-full px-4 py-3 bg-white/10 rounded-xl resize-none"
-                    />
-                    <p className="text-sm text-gray-400 mt-2">На основании закона «О защите прав потребителей»</p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* ШАГ 8 — Готово */}
-            {currentStep === 8 && (
               <div className="flex items-center justify-center min-h-full">
                 <div className="bg-white/5 rounded-3xl p-12 text-center max-w-md">
                   <div className="w-24 h-24 mx-auto mb-8 bg-cyan-500/20 rounded-full flex items-center justify-center">
@@ -846,16 +847,16 @@ export default function CreateShopPage() {
       {/* Модалка товара */}
       {isProductModalOpen && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-8">
-          <div className="bg-[#0f0f17] rounded-3xl shadow-2xl w-full max-w-2xl">
-            <div className="flex justify-between items-center p-8 border-b border-white/10">
+          <div className="bg-[#0f0f17] rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+            <div className="flex justify-between items-center p-8 border-b border-white/10 flex-shrink-0">
               <h3 className="text-2xl font-bold">Новый товар</h3>
               <button onClick={() => setIsProductModalOpen(false)} className="p-2 hover:bg-white/10 rounded-lg">
                 <X className="w-6 h-6" />
               </button>
             </div>
-            <div className="p-8 space-y-8">
+            <div className="p-8 space-y-8 overflow-y-auto flex-1">
               <label className="block">
-                <input type="file" accept="image/*" onChange={(e) => handleImage(e, setProductForm)} className="hidden" />
+                <input type="file" accept="image/*" onChange={handleProductImage} className="hidden" />
                 {!productForm.image ? (
                   <div className="border-2 border-dashed border-white/20 rounded-3xl h-64 flex flex-col items-center justify-center cursor-pointer hover:border-white/40">
                     <Upload className="w-12 h-12 mb-4" />
@@ -877,34 +878,68 @@ export default function CreateShopPage() {
                 placeholder="Цена (₽)"
                 className="w-full px-6 py-5 bg-white/10 rounded-2xl"
               />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <select
+                  value={productForm.categoryId}
+                  onChange={(e) => setProductForm({ ...productForm, categoryId: e.target.value })}
+                  className="w-full px-6 py-5 bg-white/10 rounded-2xl text-white"
+                  style={{
+                    color: 'white',
+                  }}
+                >
+                  <option value="" style={{ background: '#0f0f17', color: 'white' }}>Без категории</option>
+                  {categoryOptions.map((opt) => (
+                    <option key={opt.id} value={opt.id} style={{ background: '#0f0f17', color: 'white' }}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+
+                <select
+                  value={productForm.brandName}
+                  onChange={(e) => setProductForm({ ...productForm, brandName: e.target.value })}
+                  className="w-full px-6 py-5 bg-white/10 rounded-2xl text-white"
+                  style={{
+                    color: 'white',
+                  }}
+                >
+                  <option value="" style={{ background: '#0f0f17', color: 'white' }}>Без бренда</option>
+                  {brands.map((brand) => (
+                    <option key={brand} value={brand} style={{ background: '#0f0f17', color: 'white' }}>
+                      {brand}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
               <div>
-                        <p className="text-sm text-gray-400 mb-3">Размеры</p>
-                        <div className="flex gap-2">
-                          {["S", "M", "L", "XL"].map((size) => (
-                            <button
-                              key={size}
-                              type="button"
-                              onClick={() => {
-                                const newSizes = productForm.sizes.includes(size)
-                                  ? productForm.sizes.filter(s => s !== size)
-                                  : [...productForm.sizes, size];
-                                setProductForm({ ...productForm, sizes: newSizes });
-                              }}
-                              className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
-                                productForm.sizes.includes(size)
-                                  ? "bg-white text-black"
-                                  : "bg-white/10 text-gray-400 hover:bg-white/20"
-                              }`}
-                            >
-                              {size}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
+                <p className="text-sm text-gray-400 mb-3">Размеры и остатки</p>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  {["S", "M", "L", "XL"].map((size) => (
+                    <div key={size} className="bg-white/5 rounded-xl px-4 py-3">
+                      <div className="text-xs text-gray-400 mb-2">Размер {size}</div>
+                      <input
+                        type="text"
+                        value={productForm.sizeQuantities[size] || ""}
+                        onChange={(e) =>
+                          setProductForm((prev) => ({
+                            ...prev,
+                            sizeQuantities: {
+                              ...prev.sizeQuantities,
+                              [size]: e.target.value.replace(/\D/g, ""),
+                            },
+                          }))
+                        }
+                        placeholder="0"
+                        className="w-full px-3 py-2 bg-white/10 rounded-lg"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
 
             </div>
-            <div className="flex justify-end gap-4 p-8 border-t border-white/10">
+            <div className="flex justify-end gap-4 p-8 border-t border-white/10 flex-shrink-0">
               <button onClick={() => setIsProductModalOpen(false)} className="px-8 py-4 text-gray-400 hover:text-white">
                 Отмена
               </button>
@@ -931,7 +966,7 @@ export default function CreateShopPage() {
             </div>
             <div className="p-8 space-y-8">
               <label className="block">
-                <input type="file" accept="image/*" onChange={(e) => handleImage(e, setNewsForm)} className="hidden" />
+                <input type="file" accept="image/*" onChange={handleNewsImage} className="hidden" />
                 {!newsForm.image ? (
                   <div className="border-2 border-dashed border-white/20 rounded-3xl h-48 flex flex-col items-center justify-center cursor-pointer">
                     <Upload className="w-12 h-12 mb-4" />
@@ -946,6 +981,12 @@ export default function CreateShopPage() {
                 onChange={(e) => setNewsForm({ ...newsForm, title: e.target.value })}
                 placeholder="Заголовок новости"
                 className="w-full px-6 py-5 bg-white/10 rounded-2xl"
+              />
+              <textarea
+                value={newsForm.content}
+                onChange={(e) => setNewsForm({ ...newsForm, content: e.target.value })}
+                placeholder="Текст новости"
+                className="w-full px-6 py-5 bg-white/10 rounded-2xl min-h-[140px]"
               />
             </div>
             <div className="flex justify-end gap-4 p-8 border-t border-white/10">
@@ -1025,12 +1066,6 @@ export default function CreateShopPage() {
                       brands,
                       products,
                       news,
-                      deliverySettings: {
-                        methods: ["courier", "pickup"],
-                        price: 300,
-                        paymentMethods: [],
-                        returnPolicy: "Стандартные условия возврата",
-                      },
                       createdAt: Date.now(),
                     };
                     dispatch(addShop(newShop));
@@ -1050,12 +1085,6 @@ export default function CreateShopPage() {
                     brands,
                     products,
                     news,
-                    deliverySettings: {
-                      methods: ["courier", "pickup"],
-                      price: 300,
-                      paymentMethods: ["cash", "card"],
-                      returnPolicy: "Стандартные условия возврата",
-                    },
                     createdAt: Date.now(),
                   };
                   dispatch(addShop(newShop));
