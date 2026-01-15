@@ -21,6 +21,7 @@ import { AppDispatch } from "../../../app/store";
 import { createShop } from "../../../features/shops/shopsThunks";
 import { addShop } from "../../../features/shops/shopsSlice";
 import { filesApi } from "../../../api/files.api";
+import { showShopCreatedNotification } from "../../../utils/notifications";
 
 const steps = [
   { number: 1, title: "Инфо", subtitle: "Основная информация" },
@@ -893,6 +894,7 @@ export default function CreateShopPage() {
 
                   if (createShop.fulfilled.match(result)) {
                     const createdShopId = (result.payload as any)?.id;
+                    showShopCreatedNotification(dispatch, shopName || "Мой магазин");
                     if (createdShopId) {
                       navigate(`/stores/${createdShopId}`);
                     } else {
@@ -919,6 +921,7 @@ export default function CreateShopPage() {
                       createdAt: Date.now(),
                     };
                     dispatch(addShop(newShop));
+                    showShopCreatedNotification(dispatch, shopName || "Мой магазин");
                     navigate("/");
                   }
                 } catch (error) {
@@ -943,6 +946,7 @@ export default function CreateShopPage() {
                     createdAt: Date.now(),
                   };
                   dispatch(addShop(newShop));
+                  showShopCreatedNotification(dispatch, shopName || "Мой магазин");
                   navigate("/");
                 } finally {
                   setIsCreating(false);
