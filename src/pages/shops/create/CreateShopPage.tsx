@@ -20,7 +20,7 @@ import {
 import { AppDispatch } from "../../../app/store";
 import { createShop } from "../../../features/shops/shopsThunks";
 import { addShop } from "../../../features/shops/shopsSlice";
-import { filesApi } from "../../../api/files.api"; 
+import { filesApi } from "../../../api/files.api";
 
 const steps = [
   { number: 1, title: "Инфо", subtitle: "Основная информация" },
@@ -890,9 +890,14 @@ export default function CreateShopPage() {
                     designCode: selectedTheme || "Классика Dark",
                     pfpUrl: uploadedImageUrl || undefined,
                   }));
-                  
+
                   if (createShop.fulfilled.match(result)) {
-                    navigate("/");
+                    const createdShopId = (result.payload as any)?.id;
+                    if (createdShopId) {
+                      navigate(`/stores/${createdShopId}`);
+                    } else {
+                      navigate("/");
+                    }
                   } else {
                     // Fallback to local storage if API fails
                     const newShop = {

@@ -12,6 +12,8 @@ import {
   ICategoryResponse,
   IBrandResponse,
 } from "../../api/products.api";
+import { sizesApi, ISizeResponse } from "../../api/sizes.api";
+import { productSizesApi } from "../../api/product-sizes.api";
 import { filesApi } from "../../api/files.api";
 import { shopsApi, IShopDisplay, toShopDisplay, IShopResponse } from "../../api/shops.api";
 import { newsApi, INewsResponse } from "../../api/news.api";
@@ -56,6 +58,14 @@ export default function StoreEditorPage() {
     brandId: "",
     price: "",
     description: "",
+  });
+
+  const [sizes, setSizes] = useState<ISizeResponse[]>([]);
+  const [sizeQuantities, setSizeQuantities] = useState<Record<string, string>>({
+    S: "",
+    M: "",
+    L: "",
+    XL: "",
   });
 
   // Category/Brand form state
@@ -115,6 +125,14 @@ export default function StoreEditorPage() {
         setProducts(productsRes.data);
         setCategories(categoriesRes.data);
         setBrands(brandsRes.data);
+
+        // Fetch sizes dictionary
+        try {
+          const sizesRes = await sizesApi.getAll();
+          setSizes(sizesRes.data || []);
+        } catch {
+          setSizes([]);
+        }
 
         // Fetch news separately (requires auth, may fail)
         try {
@@ -243,6 +261,41 @@ export default function StoreEditorPage() {
       };
 
       const response = await productsApi.create(productData);
+
+      // Persist product sizes (best-effort)
+      try {
+        const entries = Object.entries(sizeQuantities)
+          .map(([value, qtyStr]) => ({ value, qty: Number(qtyStr || 0) }))
+          .filter(x => Number.isFinite(x.qty) && x.qty > 0);
+
+        for (const entry of entries) {
+          let sizeId = sizes.find(s => s.value === entry.value)?.id;
+          if (!sizeId) {
+            try {
+              const created = await sizesApi.create({ value: entry.value });
+              sizeId = created.data.id;
+              setSizes(prev => [...prev, created.data]);
+            } catch {
+              // ignore
+            }
+          }
+
+          if (sizeId) {
+            try {
+              await productSizesApi.create({
+                productId: response.data.id,
+                sizeId,
+                quantityAvailable: entry.qty,
+              });
+            } catch {
+              // ignore
+            }
+          }
+        }
+      } catch {
+        // ignore
+      }
+
       setProducts((prev) => [...prev, response.data]);
       setIsModalOpen(false);
       setForm({
@@ -253,6 +306,13 @@ export default function StoreEditorPage() {
         brandId: "",
         price: "",
         description: "",
+      });
+
+      setSizeQuantities({
+        S: "",
+        M: "",
+        L: "",
+        XL: "",
       });
     } catch (error) {
       console.error("Failed to create product:", error);
@@ -275,7 +335,7 @@ export default function StoreEditorPage() {
     if (!newCategoryName.trim() || !id) return;
     setIsSaving(true);
     try {
-      const payload: { title: string; shopId: string; parentId?: string } = { 
+      const payload: { title: string; shopId: string; parentId?: string } = {
         title: newCategoryName.trim(),
         shopId: id,
       };
@@ -432,7 +492,7 @@ export default function StoreEditorPage() {
     setIsGeneralSaving(true);
     try {
       let pfpUrl = generalSettings.pfpUrl;
-      
+
       // Upload new avatar if file selected
       if (generalSettings.pfpFile) {
         try {
@@ -470,7 +530,7 @@ export default function StoreEditorPage() {
     if (!id) return;
     const confirmed = window.confirm("Вы уверены, что хотите удалить магазин? Это действие нельзя отменить.");
     if (!confirmed) return;
-    
+
     try {
       await shopsApi.delete(id);
       alert("Магазин удален");
@@ -664,8 +724,8 @@ export default function StoreEditorPage() {
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
               {categories.map((category) => {
-                const parentCategory = category.parentId 
-                  ? categories.find(c => c.id === category.parentId) 
+                const parentCategory = category.parentId
+                  ? categories.find(c => c.id === category.parentId)
                   : null;
                 return (
                   <div
@@ -792,8 +852,8 @@ export default function StoreEditorPage() {
                     </div>
                     <div className="mt-2">
                       <span className={`text-[10px] px-2 py-0.5 rounded-full ${
-                        item.isPublished 
-                          ? "bg-green-500/20 text-green-400" 
+                        item.isPublished
+                          ? "bg-green-500/20 text-green-400"
                           : "bg-yellow-500/20 text-yellow-400"
                       }`}>
                         {item.isPublished ? "Опубликовано" : "Черновик"}
@@ -815,9 +875,9 @@ export default function StoreEditorPage() {
         {activeTab === "Дизайн" && (
           <div className="space-y-6">
             {/* Preview Card */}
-            <div 
+            <div
               className="rounded-2xl p-6 border border-white/10"
-              style={{ 
+              style={{
                 backgroundColor: designSettings.backgroundColor,
                 borderRadius: `${designSettings.borderRadius}px`
               }}
@@ -826,27 +886,27 @@ export default function StoreEditorPage() {
                 Предпросмотр дизайна
               </h3>
               <div className="flex gap-4">
-                <div 
+                <div
                   className="w-24 h-24 rounded-xl flex items-center justify-center"
-                  style={{ 
+                  style={{
                     backgroundColor: designSettings.primaryColor,
                     borderRadius: `${designSettings.borderRadius}px`
                   }}
                 >
                   <span className="text-white text-xs">Primary</span>
                 </div>
-                <div 
+                <div
                   className="w-24 h-24 rounded-xl flex items-center justify-center"
-                  style={{ 
+                  style={{
                     backgroundColor: designSettings.secondaryColor,
                     borderRadius: `${designSettings.borderRadius}px`
                   }}
                 >
                   <span className="text-white text-xs">Secondary</span>
                 </div>
-                <div 
+                <div
                   className="w-24 h-24 rounded-xl flex items-center justify-center"
-                  style={{ 
+                  style={{
                     backgroundColor: designSettings.accentColor,
                     borderRadius: `${designSettings.borderRadius}px`
                   }}
@@ -1026,9 +1086,9 @@ export default function StoreEditorPage() {
                 <label className="cursor-pointer">
                   <input type="file" accept="image/*" onChange={handleGeneralAvatar} className="hidden" />
                   {generalSettings.pfpUrl ? (
-                    <img 
-                      src={generalSettings.pfpUrl} 
-                      alt="Shop avatar" 
+                    <img
+                      src={generalSettings.pfpUrl}
+                      alt="Shop avatar"
                       className="w-24 h-24 rounded-2xl object-cover border-2 border-white/10 hover:border-cyan-400/50 transition"
                     />
                   ) : (
@@ -1047,7 +1107,7 @@ export default function StoreEditorPage() {
             {/* Shop Info */}
             <div className="bg-[#111822] rounded-xl p-6 space-y-4">
               <h3 className="text-lg font-semibold mb-4">Информация о магазине</h3>
-              
+
               <div>
                 <label className="block text-sm font-medium mb-2">Название магазина</label>
                 <input
@@ -1078,7 +1138,7 @@ export default function StoreEditorPage() {
                     type="text"
                     value={shop?.domain || ""}
                     disabled
-                    className="flex-1 px-4 py-3 bg-white/5 rounded-xl text-gray-400 cursor-not-allowed"
+                    className="flex-1 px-4 py-3 bg-white/5 rounded-lg text-gray-400 cursor-not-allowed"
                   />
                 </div>
                 <p className="text-xs text-gray-500 mt-1">URL магазина нельзя изменить после создания</p>
@@ -1200,6 +1260,24 @@ export default function StoreEditorPage() {
                 rows={2}
                 className="w-full px-4 py-3 bg-white/10 rounded-xl placeholder-gray-500 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-cyan-400/30"
               />
+
+              <div className="bg-white/5 rounded-2xl p-4">
+                <p className="text-sm text-gray-300 mb-3">Размеры и остатки</p>
+                <div className="grid grid-cols-2 gap-3">
+                  {Object.keys(sizeQuantities).map((size) => (
+                    <div key={size} className="flex items-center justify-between gap-3 bg-white/5 rounded-xl px-4 py-3">
+                      <span className="font-medium">{size}</span>
+                      <input
+                        value={sizeQuantities[size]}
+                        onChange={(e) => setSizeQuantities(prev => ({ ...prev, [size]: e.target.value.replace(/\D/g, "") }))}
+                        placeholder="0"
+                        className="w-24 px-3 py-2 bg-white/10 rounded-lg text-right placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-400/30"
+                      />
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs text-gray-500 mt-2">Остатки сохраняются в backend (product-sizes). 0 или пусто — не создаём запись.</p>
+              </div>
             </div>
 
             <div className="flex justify-end gap-3 p-5 border-t border-white/10">
