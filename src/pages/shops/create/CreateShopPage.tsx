@@ -470,10 +470,10 @@ export default function CreateShopPage() {
   const categoryOptions = flattenCategories(categories);
 
   return (
-    <div className="min-h-screen flex bg-[#0a0a0f] text-white">
+    <div className="min-h-screen flex bg-slate-900 text-white">
       {/* Левое меню */}
-      <aside className="w-64 bg-[#0f0f17] p-6 flex flex-col">
-        <h1 className="text-2xl font-bold mb-8">FashionConstruct</h1>
+      <aside className="w-64 bg-slate-800 p-6 flex flex-col border-r border-slate-700">
+        <h1 className="text-2xl font-bold mb-8 bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent">FashionConstruct</h1>
 
         <nav className="space-y-3 flex-1">
           {steps.map((step) => {
@@ -485,17 +485,17 @@ export default function CreateShopPage() {
                 key={step.number}
                 onClick={() => setCurrentStep(step.number)}
                 className={`w-full text-left rounded-2xl px-4 py-4 transition-all ${
-                  isActive ? "bg-white text-black shadow-xl" : "text-gray-500 hover:text-gray-300"
+                  isActive ? "bg-white text-slate-900 shadow-xl" : "text-slate-400 hover:text-slate-300 hover:bg-slate-700/50"
                 }`}
               >
                 <div className="flex items-center gap-4">
                   <div
-                    className={`w-10 h-10 rounded-full flex items-center justify-center text-base font-bold ${
+                    className={`w-10 h-10 rounded-full flex items-center justify-center text-base font-bold transition-all ${
                       isActive
-                        ? "bg-black text-white"
+                        ? "bg-slate-900 text-white"
                         : isCompleted
-                        ? "bg-cyan-500 text-white"
-                        : "bg-white/10 text-gray-500"
+                        ? "bg-green-500 text-white"
+                        : "bg-slate-700 text-slate-400"
                     }`}
                   >
                     {isCompleted ? <Check className="w-5 h-5" /> : step.number}
@@ -516,13 +516,13 @@ export default function CreateShopPage() {
       {/* Основная часть */}
       <div className="flex-1 flex flex-col relative">
         <header className="px-12 pt-10 pb-8">
-          <h2 className="text-5xl font-bold mb-3">Конструктор магазина</h2>
-          <p className="text-lg text-gray-400 mb-6">
+          <h2 className="text-5xl font-bold mb-3 bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent">Конструктор магазина</h2>
+          <p className="text-lg text-slate-400 mb-6">
             Шаг {currentStep} из {steps.length} — {steps[currentStep - 1].subtitle}
           </p>
-          <div className="w-full bg-white/10 rounded-full h-3">
+          <div className="w-full bg-slate-700 rounded-full h-3">
             <div
-              className="bg-white h-full rounded-full transition-all duration-500"
+              className="bg-gradient-to-r from-blue-500 to-purple-500 h-full rounded-full transition-all duration-500"
               style={{ width: `${progress}%` }}
             />
           </div>
@@ -540,7 +540,7 @@ export default function CreateShopPage() {
                       value={shopName}
                       onChange={(e) => setShopName(e.target.value)}
                       placeholder="Название магазина"
-                      className="px-6 py-5 bg-white/10 rounded-2xl placeholder-gray-500 text-lg focus:outline-none focus:ring-4 focus:ring-cyan-400/30"
+                      className="px-6 py-5 bg-slate-800 border border-slate-700 rounded-2xl placeholder-slate-500 text-lg focus:outline-none focus:ring-4 focus:ring-blue-500/30 focus:border-blue-500/50 transition-all"
                     />
                     <div className="flex items-center gap-4">
                       <input
@@ -549,9 +549,9 @@ export default function CreateShopPage() {
                           setShopDomain(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-"))
                         }
                         placeholder="адрес"
-                        className="flex-1 px-6 py-5 bg-white/10 rounded-2xl placeholder-gray-500 text-lg focus:outline-none focus:ring-4 focus:ring-cyan-400/30"
+                        className="flex-1 px-6 py-5 bg-slate-800 border border-slate-700 rounded-2xl placeholder-slate-500 text-lg focus:outline-none focus:ring-4 focus:ring-blue-500/30 focus:border-blue-500/50 transition-all"
                       />
-                      <span className="text-lg text-gray-400">.fashionconstruct.ru</span>
+                      <span className="text-lg text-slate-400">.fashionconstruct.ru</span>
                     </div>
                   </div>
                 </div>
@@ -561,7 +561,7 @@ export default function CreateShopPage() {
                   <textarea
                     rows={6}
                     placeholder="Расскажите о вашем магазине одежды"
-                    className="w-full px-6 py-5 bg-white/10 rounded-2xl placeholder-gray-500 text-lg resize-none"
+                    className="w-full px-6 py-5 bg-slate-800 border border-slate-700 rounded-2xl placeholder-slate-500 text-lg resize-none focus:outline-none focus:ring-4 focus:ring-blue-500/30 focus:border-blue-500/50 transition-all"
                   />
                 </div>
 
@@ -569,17 +569,14 @@ export default function CreateShopPage() {
                   <h3 className="text-2xl font-semibold mb-6">Обложка магазина</h3>
                   <label className="block cursor-pointer">
                     <input type="file" accept="image/png, image/jpeg, image/gif" onChange={handleCoverImage} className="hidden" />
-                    <div className="border-2 border-dashed border-white/20 rounded-3xl h-64 flex items-center justify-center text-gray-400 overflow-hidden">
+                    <div className="border-2 border-dashed border-slate-600 rounded-3xl h-64 flex items-center justify-center text-slate-400 overflow-hidden hover:border-slate-500 hover:bg-slate-800/50 transition-all">
                       {!coverImage ? (
                         <>
-                          <div className="text-center">
-                            <div className="w-16 h-16 bg-white/10 rounded-2xl mb-4 mx-auto" />
-                            <p>Загрузите файл или перетащите его сюда</p>
-                            <p className="text-sm mt-2">PNG, JPG, GIF до 10MB</p>
-                          </div>
+                          <Upload className="w-12 h-12 mr-4" />
+                          <span className="text-lg">Загрузить обложку</span>
                         </>
                       ) : (
-                        <img src={coverImage} alt="Обложка магазина" className="w-full h-full object-cover" />
+                        <img src={coverImage} alt="Обложка" className="w-full h-full object-cover" />
                       )}
                     </div>
                   </label>

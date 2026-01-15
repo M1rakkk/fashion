@@ -164,8 +164,7 @@ const LoginPage: React.FC = () => {
             {error && (
               <div className={`p-3 border rounded-lg text-sm backdrop-blur-sm ${
                 error.includes("Invalid user credentials") || 
-                error.includes("Ошибка регистрации") ||
-                error.includes("Registration successful")
+                error.includes("Ошибка регистрации")
                   ? 'bg-red-500/10 border-red-500/20 text-red-400'
                   : 'bg-white/10 border-white/20 text-white'
               }`}>
