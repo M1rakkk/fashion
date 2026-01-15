@@ -76,37 +76,58 @@ const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-[var(--background)] text-[var(--foreground)]">
-      <div className="grid md:grid-cols-2 max-w-4xl w-full bg-[var(--card)] rounded-2xl overflow-hidden shadow-xl">
-
-        {/* Left side */}
-        <div className="p-10 flex flex-col justify-center">
-          <h1 className="text-4xl font-semibold mb-3">
-            {isRegister ? "Создайте аккаунт" : "Войти в аккаунт"}
+    <div className="min-h-screen flex items-center justify-center p-4 bg-slate-900 relative overflow-hidden">
+      {/* Background gradient */}
+      <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900" />
+      
+      {/* Decorative elements */}
+      <div className="absolute top-0 left-0 w-96 h-96 bg-gradient-to-br from-blue-500/10 to-purple-500/10 rounded-full blur-3xl" />
+      <div className="absolute bottom-0 right-0 w-96 h-96 bg-gradient-to-tl from-cyan-500/10 to-blue-500/10 rounded-full blur-3xl" />
+      
+      {/* Grid pattern */}
+      <div className="absolute inset-0 opacity-5">
+        <div className="h-full w-full" style={{
+          backgroundImage: `linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)`,
+          backgroundSize: '40px 40px'
+        }} />
+      </div>
+      
+      <div className="w-full max-w-md relative z-10">
+        {/* Logo/Header */}
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-white to-gray-100 rounded-3xl mb-6 shadow-2xl border border-white/10 backdrop-blur-sm">
+            <span className="text-3xl font-bold text-slate-900">FC</span>
+          </div>
+          <h1 className="text-4xl font-bold text-white mb-3 tracking-tight">
+            {isRegister ? "Создайте аккаунт" : "Вход в систему"}
           </h1>
-
-          <p className="text-[var(--muted-foreground)] mb-8">
+          <p className="text-slate-400 text-lg">
             {isRegister 
-              ? "Заполните данные для создания магазина." 
-              : "Введите ваши данные для входа."}
+              ? "Начните создавать свой магазин одежды" 
+              : "Добро пожаловать обратно"}
           </p>
+        </div>
 
-          <div className="space-y-4">
+        {/* Form Card */}
+        <div className="bg-slate-800/80 backdrop-blur-xl rounded-3xl border border-slate-700/50 p-8 shadow-2xl">
+          <div className="space-y-5">
             {isRegister && (
-              <>
+              <div className="grid grid-cols-2 gap-3">
                 <Input
                   type="text"
                   placeholder="Имя"
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
+                  className="bg-slate-700/50 border-slate-600/50 backdrop-blur-sm"
                 />
                 <Input
                   type="text"
                   placeholder="Фамилия"
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
+                  className="bg-slate-700/50 border-slate-600/50 backdrop-blur-sm"
                 />
-              </>
+              </div>
             )}
             
             <Input
@@ -114,6 +135,7 @@ const LoginPage: React.FC = () => {
               placeholder="Email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              className="bg-slate-700/50 border-slate-600/50 backdrop-blur-sm"
             />
 
             <Input
@@ -121,46 +143,62 @@ const LoginPage: React.FC = () => {
               placeholder="Пароль"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              className="bg-slate-700/50 border-slate-600/50 backdrop-blur-sm"
             />
 
             <Button
               onClick={onSubmit}
               disabled={loading}
-              className="w-full"
+              className="w-full bg-gradient-to-r from-white to-gray-100 text-slate-900 hover:from-gray-100 hover:to-white font-medium shadow-lg hover:shadow-xl transition-all duration-300"
             >
-              {loading ? "Загрузка..." : (isRegister ? "Зарегистрироваться" : "Войти")}
+              {loading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <div className="w-4 h-4 border-2 border-slate-300 border-t-transparent rounded-full animate-spin" />
+                  Загрузка...
+                </span>
+              ) : (
+                isRegister ? "Создать аккаунт" : "Войти"
+              )}
             </Button>
 
             {error && (
-              <div className="text-sm text-red-500">{error}</div>
+              <div className={`p-3 border rounded-lg text-sm backdrop-blur-sm ${
+                error.includes("Invalid user credentials") || 
+                error.includes("Ошибка регистрации") ||
+                error.includes("Registration successful")
+                  ? 'bg-red-500/10 border-red-500/20 text-red-400'
+                  : 'bg-white/10 border-white/20 text-white'
+              }`}>
+                {error}
+              </div>
             )}
           </div>
 
-          <div className="mt-6 text-sm text-[var(--muted-foreground)] flex justify-between">
-            <span>{isRegister ? "Уже есть аккаунт?" : "Нет аккаунта?"}</span>
+          <div className="mt-6 text-center">
+            <span className="text-slate-400 text-sm">
+              {isRegister ? "Уже есть аккаунт?" : "Нет аккаунта?"}
+            </span>
             <button 
-              className="underline"
+              className="ml-2 text-white text-sm hover:text-gray-300 transition-colors font-medium"
               onClick={() => setIsRegister(!isRegister)}
             >
               {isRegister ? "Войти" : "Зарегистрироваться"}
             </button>
           </div>
-
-          <p className="text-xs text-[var(--muted-foreground)] mt-8 leading-relaxed">
-            Продолжая, вы соглашаетесь с нашими{" "}
-            <span className="underline">Условиями использования</span> и{" "}
-            <span className="underline">Политикой конфиденциальности</span>.
-          </p>
         </div>
 
-        {/* Right side (image) */}
-        <div className="hidden md:flex items-stretch">
-          <img
-            src="https://images.unsplash.com/photo-1441986300917-64674bd600d8?q=80&w=2070&auto=format&fit=crop"
-            alt="Login visual"
-            className="w-full h-full object-cover"
-            style={{ minHeight: 360 }}
-          />
+        {/* Footer */}
+        <div className="mt-8 text-center">
+          <p className="text-xs text-slate-500">
+            Продолжая, вы соглашаетесь с{" "}
+            <button className="text-slate-400 hover:text-white transition-colors">
+              Условиями использования
+            </button>{" "}
+            и{" "}
+            <button className="text-slate-400 hover:text-white transition-colors">
+              Политикой конфиденциальности
+            </button>
+          </p>
         </div>
       </div>
     </div>
