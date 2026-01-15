@@ -6,8 +6,9 @@ import { useSelector, useDispatch } from "react-redux";
 import { RootState, AppDispatch } from "../../app/store";
 import { removeShop } from "../../features/shops/shopsSlice";
 import { fetchMyShops, deleteShop } from "../../features/shops/shopsThunks";
-import { Plus, Settings, Trash2, AlertCircle, Loader2, ShoppingBag, Package, TrendingUp, Clock } from "lucide-react";
+import { Plus, Settings, Trash2, AlertCircle, Loader2, ShoppingBag, Package, TrendingUp, Clock, BarChart2, Calendar, Target, Lightbulb, Award } from "lucide-react";
 import { productsApi, categoriesApi } from "../../api/products.api";
+import { Shop } from "../../features/shops/shopsSlice";
 
 const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
@@ -19,6 +20,43 @@ const DashboardPage: React.FC = () => {
   
   // Combine API shops with local shops for backward compatibility
   const shops = apiShops.length > 0 ? apiShops : localItems;
+
+  // State для подсказок
+  const [showTip, setShowTip] = useState(true);
+  const [currentTip, setCurrentTip] = useState(0);
+  
+  const tips = [
+    "💡 Регулярно обновляйте ассортимент товаров для привлечения новых клиентов",
+    "📊 Используйте аналитику для отслеживания популярных товаров",
+    "🏪 Создавайте уникальные описания для каждого магазина",
+    "🎯 Устанавливайте конкурентоспособные цены на товары",
+    "📱 Добавляйте качественные фотографии товаров",
+    "⭐ Собирайте отзывы от клиентов для улучшения сервиса"
+  ];
+
+  // Смена подсказки каждые 5 секунд
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTip((prev) => (prev + 1) % tips.length);
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [tips.length]);
+
+  // Расчет реальных данных для достижений
+  const totalProducts = shops.reduce((sum, shop) => {
+    if ('products' in shop) {
+      return sum + (shop as Shop).products.length;
+    }
+    return sum;
+  }, 0);
+
+  const achievements = [
+    { icon: Award, title: "Первый магазин", completed: shops.length >= 1, color: "text-yellow-400" },
+    { icon: Award, title: "5 магазинов", completed: shops.length >= 5, color: "text-blue-400" },
+    { icon: Award, title: "10 товаров", completed: totalProducts >= 10, color: "text-green-400" },
+    { icon: Award, title: "50 товаров", completed: totalProducts >= 50, color: "text-purple-400" }
+  ];
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -69,41 +107,58 @@ const DashboardPage: React.FC = () => {
         <p className="text-lg text-slate-400">Управление вашей империей моды</p>
       </div>
 
-      {/* Статистика */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
-        <div className="bg-slate-800 p-6 rounded-2xl border border-slate-700">
-          <div className="flex items-center justify-between mb-4">
-            <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
-              <ShoppingBag className="w-6 h-6 text-white" />
+      {/* Полезные подсказки */}
+      {showTip && (
+        <div className="mb-10">
+          <div className="bg-gradient-to-r from-blue-600/20 to-purple-600/20 p-6 rounded-2xl border border-blue-500/30 relative">
+            <button
+              onClick={() => setShowTip(false)}
+              className="absolute top-4 right-4 w-8 h-8 bg-slate-700/50 rounded-lg flex items-center justify-center hover:bg-slate-600/50 transition-colors"
+            >
+              <span className="text-slate-300 text-sm">×</span>
+            </button>
+            <div className="flex items-start pr-10">
+              <div className="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center mr-4 flex-shrink-0">
+                <Lightbulb className="w-5 h-5 text-blue-400" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-white mb-2">Совет дня</h3>
+                <p className="text-slate-300 transition-all duration-500">
+                  {tips[currentTip]}
+                </p>
+              </div>
             </div>
-            <span className="text-xs text-green-400 font-medium bg-green-900/30 px-2 py-1 rounded-full">+12%</span>
           </div>
-          <h3 className="text-2xl font-bold text-white">{shops.length}</h3>
-          <p className="text-sm text-slate-400">Активных магазинов</p>
         </div>
+      )}
 
+      {/* Достижения */}
+      <div className="mb-10">
         <div className="bg-slate-800 p-6 rounded-2xl border border-slate-700">
           <div className="flex items-center justify-between mb-4">
-            <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
-              <Package className="w-6 h-6 text-white" />
-            </div>
-            <span className="text-xs text-green-400 font-medium bg-green-900/30 px-2 py-1 rounded-full">+8%</span>
+            <h3 className="text-lg font-semibold text-white">Достижения</h3>
+            <Award className="w-5 h-5 text-slate-400" />
           </div>
-          <h3 className="text-2xl font-bold text-white">
-            {Object.values(shopCounts).reduce((sum, count) => sum + count.products, 0)}
-          </h3>
-          <p className="text-sm text-slate-400">Всего товаров</p>
-        </div>
-
-        <div className="bg-slate-800 p-6 rounded-2xl border border-slate-700">
-          <div className="flex items-center justify-between mb-4">
-            <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
-              <TrendingUp className="w-6 h-6 text-white" />
-            </div>
-            <span className="text-xs text-green-400 font-medium bg-green-900/30 px-2 py-1 rounded-full">+24%</span>
+          <div className="grid grid-cols-4 gap-3">
+            {achievements.map((achievement, index) => {
+              const Icon = achievement.icon;
+              return (
+                <div 
+                  key={index}
+                  className={`p-3 rounded-lg border transition-all ${
+                    achievement.completed 
+                      ? 'border-green-500/30 bg-green-500/10' 
+                      : 'border-slate-600 bg-slate-700/50'
+                  }`}
+                >
+                  <Icon className={`w-5 h-5 mb-2 ${achievement.completed ? achievement.color : 'text-slate-500'}`} />
+                  <p className={`text-xs font-medium ${achievement.completed ? 'text-white' : 'text-slate-400'}`}>
+                    {achievement.title}
+                  </p>
+                </div>
+              );
+            })}
           </div>
-          <h3 className="text-2xl font-bold text-white">₽234K</h3>
-          <p className="text-sm text-slate-400">Выручка за месяц</p>
         </div>
       </div>
 
