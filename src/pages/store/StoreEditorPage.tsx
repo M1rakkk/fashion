@@ -16,6 +16,7 @@ import { filesApi } from "../../api/files.api";
 import { shopsApi, IShopDisplay, toShopDisplay, IShopResponse } from "../../api/shops.api";
 import { newsApi, INewsResponse } from "../../api/news.api";
 import { showProductAddedNotification } from "../../utils/notifications";
+import { StockMonitor } from "../../utils/stockMonitor";
 import {
   ChevronLeft,
   Package,
@@ -250,6 +251,15 @@ export default function StoreEditorPage() {
       // Показываем уведомление о добавлении товара
       const shopName = shop?.name || "Магазин";
       showProductAddedNotification(dispatch, form.name.trim(), shopName);
+      
+      // Запускаем мониторинг остатков для нового товара (симуляция)
+      const stockMonitor = StockMonitor.getInstance(dispatch);
+      stockMonitor.trackProduct(
+        response.data.id,
+        form.name.trim(),
+        shopName,
+        15 // Начальное количество
+      );
       
       setIsModalOpen(false);
       setForm({

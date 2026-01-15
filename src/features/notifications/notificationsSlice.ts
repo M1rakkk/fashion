@@ -17,24 +17,7 @@ interface NotificationsState {
 }
 
 const initialState: NotificationsState = {
-  notifications: [
-    {
-      id: '1',
-      title: 'Товары заканчиваются',
-      message: 'У товара "Футболка Classic" осталось 5 штук',
-      type: 'warning',
-      time: '1 час назад',
-      read: false,
-    },
-    {
-      id: '2',
-      title: 'Рост продаж',
-      message: 'Продажи выросли на 24% за последнюю неделю',
-      type: 'info',
-      time: '3 часа назад',
-      read: true,
-    },
-  ],
+  notifications: [],
 };
 
 const notificationsSlice = createSlice({

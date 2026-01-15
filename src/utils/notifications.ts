@@ -21,20 +21,11 @@ export const showProductAddedNotification = (dispatch: AppDispatch, productName:
   }));
 };
 
-export const showLowStockNotification = (dispatch: AppDispatch, productName: string, quantity: number) => {
+export const showOutOfStockNotification = (dispatch: AppDispatch, productName: string, shopName: string) => {
   dispatch(addNotification({
-    title: 'Товары заканчиваются',
-    message: `У товара "${productName}" осталось ${quantity} штук`,
+    title: 'Товары закончились',
+    message: `Товар "${productName}" закончился в магазине "${shopName}"`,
     type: 'warning',
     icon: 'package',
-  }));
-};
-
-export const showSalesGrowthNotification = (dispatch: AppDispatch, percentage: number) => {
-  dispatch(addNotification({
-    title: 'Рост продаж',
-    message: `Продажи выросли на ${percentage}% за последнюю неделю`,
-    type: 'info',
-    icon: 'trending',
   }));
 };

@@ -4,7 +4,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { Bell, X, Package, ShoppingBag, TrendingUp } from "lucide-react";
 import { useSelector, useDispatch } from "react-redux";
 import { RootState, AppDispatch } from "../app/store";
-import { addNotification, markAsRead, markAllAsRead } from "../features/notifications/notificationsSlice";
+import { addNotification, markAsRead, markAllAsRead, removeNotification } from "../features/notifications/notificationsSlice";
 
 const NotificationsDropdown: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -32,6 +32,11 @@ const NotificationsDropdown: React.FC = () => {
 
   const handleMarkAllAsRead = () => {
     dispatch(markAllAsRead());
+  };
+
+  const handleRemoveNotification = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    dispatch(removeNotification(id));
   };
 
   const unreadCount = notifications.filter(n => !n.read).length;
@@ -114,9 +119,18 @@ const NotificationsDropdown: React.FC = () => {
                         }`}>
                           {notification.title}
                         </h4>
-                        {!notification.read && (
-                          <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
-                        )}
+                        <div className="flex items-center gap-2">
+                          {!notification.read && (
+                            <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
+                          )}
+                          <button
+                            onClick={(e) => handleRemoveNotification(notification.id, e)}
+                            className="p-1 hover:bg-slate-700 rounded transition-colors"
+                            title="Удалить уведомление"
+                          >
+                            <X className="w-3 h-3 text-slate-500 hover:text-red-400" />
+                          </button>
+                        </div>
                       </div>
                       <p className={`text-xs mb-2 line-clamp-2 ${
                         !notification.read ? 'text-slate-300' : 'text-slate-500'
